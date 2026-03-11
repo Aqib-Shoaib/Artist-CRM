@@ -1,28 +1,29 @@
-import React, { useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-} from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from "react";
+import {
+    Animated,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
+} from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { THEME_COLORS } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '../../../hooks/useAuth';
 import { useSmartBackHandler } from "../../../hooks/useSmartBackHandler";
 import NavHeader from "../../common/Buttons/NavHeader";
 import ImageDesCard from '../../common/Cards/ImageDesCard';
@@ -47,12 +48,12 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onNavigateToInvite }) => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { themeMode, setThemeMode, colors, isDark } = useTheme();
+  const { user, logout } = useAuth();
 
   // --- Core States ---
   const [activeTab, setActiveTab] = useState<'profile' | 'teams'>('profile');
-  const [email] = useState<string>("aqibshoaib@gmail.com");
-  const [phone, setPhone] = useState<string>("3118298343");
-  const [website, setWebsite] = useState<string>("www.artistcrm.com");
+  const [phone, setPhone] = useState<string>("");
+  const [website, setWebsite] = useState<string>("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [teams, setTeams] = useState<TeamMember[]>([]);
   const [selectedTeamMember, setSelectedTeamMember] = useState<TeamMember | null>(null);
@@ -82,17 +83,14 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onNavigateToInvite }) => {
 
   // --- Load Data ---
   useEffect(() => {
-    const loadData = async () => {
+    if (user) {
+      setPhone(user.phone || "");
+      setWebsite(user.business_name || "Artist CRM");
+      setProfileImage(user.profile_image || null);
+    }
+
+    const loadTeams = async () => {
       try {
-        const savedPhone = await AsyncStorage.getItem('user_phone');
-        if (savedPhone) setPhone(savedPhone);
-
-        const savedWeb = await AsyncStorage.getItem('user_website');
-        if (savedWeb) setWebsite(savedWeb);
-
-        const savedImage = await AsyncStorage.getItem('user_profile_image');
-        if (savedImage) setProfileImage(savedImage);
-
         const savedTeams = await AsyncStorage.getItem('permanently_saved_teams');
         if (savedTeams) {
           setTeams(JSON.parse(savedTeams));
@@ -105,11 +103,11 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onNavigateToInvite }) => {
           await AsyncStorage.setItem('permanently_saved_teams', JSON.stringify(initialTeams));
         }
       } catch (error) {
-        console.error("Load Data Error:", error);
+        console.error("Load Teams Error:", error);
       }
     };
-    loadData();
-  }, []);
+    loadTeams();
+  }, [user]);
 
   const persistTeams = async (updatedTeams: TeamMember[]) => {
     await AsyncStorage.setItem('permanently_saved_teams', JSON.stringify(updatedTeams));
@@ -213,7 +211,8 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onNavigateToInvite }) => {
 
   const confirmLogout = async () => {
     setLogoutModalVisible(false);
-    router.replace('/login');
+    await logout();
+    router.replace('/(auth)/login');
   };
 
   const handleSendInvitation = () => {
@@ -279,12 +278,12 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onNavigateToInvite }) => {
                     {profileImage ? <Image source={{ uri: profileImage }} style={styles.avatarImage} /> : <MaterialCommunityIcons name="account-outline" size={60} color={colors.primary} />}
                     <View style={[styles.plusIconWrapper, { backgroundColor: colors.primary, borderColor: colors.background }]}><MaterialCommunityIcons name="plus" size={20} color="#FFFFFF" /></View>
                   </TouchableOpacity>
-                  <Text style={[styles.profileName, { color: colors.text }]}>Aqib Shoaib</Text>
-                  <Text style={[styles.profileBusiness, { color: colors.textSecondary }]}>Artist CRM</Text>
+                  <Text style={[styles.profileName, { color: colors.text }]}>{user?.name || 'User'}</Text>
+                  <Text style={[styles.profileBusiness, { color: colors.textSecondary }]}>{user?.business_name || 'Artist CRM'}</Text>
                 </View>
 
                 <View style={styles.infoWrapper}>
-                  <InfoCard title="Email" description={email} backgroundColor={isDark ? "#1e293b" : "#FFFFFF"} borderRadius={20} containerStyle={[styles.cardBorder, { borderColor: colors.border }]} titleColor={isDark ? "#FFFFFF" : "#1E293B"} descriptionColor="#64748B" />
+                  <InfoCard title="Email" description={user?.email || ""} backgroundColor={isDark ? "#1e293b" : "#FFFFFF"} borderRadius={20} containerStyle={[styles.cardBorder, { borderColor: colors.border }]} titleColor={isDark ? "#FFFFFF" : "#1E293B"} descriptionColor="#64748B" />
                   
                   <View style={styles.cardWithMenu}>
                     <InfoCard title="Phone" description={phone} backgroundColor={isDark ? "#1e293b" : "#FFFFFF"} borderRadius={20} containerStyle={[styles.cardBorder, { borderColor: colors.border }]} titleColor={isDark ? "#FFFFFF" : "#1E293B"} descriptionColor="#64748B" />

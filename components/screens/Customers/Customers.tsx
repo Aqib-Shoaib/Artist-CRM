@@ -13,9 +13,10 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useClients } from '@/hooks/useClients';
+import { ActivityIndicator } from 'react-native';
 
 import { THEME_COLORS } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -38,12 +39,20 @@ const Customers: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const { colors, isDark } = useTheme();
 
   // --- States ---
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const { 
+    clients, 
+    isLoading, 
+    deleteClient, 
+    isDeleting, 
+    updateClient, 
+    isUpdating 
+  } = useClients();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | number | null>(null);
 
   const [tempTitle, setTempTitle] = useState("");
   const [tempPhone, setTempPhone] = useState("");
@@ -52,84 +61,60 @@ const Customers: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
 
   // --- Search Logic ---
-  const filteredCustomers = customers.filter((customer) => {
+  const filteredCustomers = (clients || []).filter((customer) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
-      customer.title.toLowerCase().includes(query) ||
+      customer.name.toLowerCase().includes(query) ||
       customer.phone.includes(query)
     );
   });
 
-  // --- Storage Logic ---
-  useEffect(() => {
-    (async () => {
-      const saved = await AsyncStorage.getItem('permanently_saved_customers');
-      if (saved) setCustomers(JSON.parse(saved));
-    })();
-  }, []);
-
- 
-
-  const persistData = async (list: Customer[]) => {
-    await AsyncStorage.setItem('permanently_saved_customers', JSON.stringify(list));
-  };
-
-  // --- Handlers ---
-// 1. pickImage ko update karein (base64 enable karne ke liye)
-const pickImage = async () => {
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsEditing: true,
-    aspect: [1, 1],
-    quality: 0.5, // Quality thori kam rakhein taake data heavy na ho
-    base64: true,  // Ye lazmi hai
-  });
-
-  if (!result.canceled) {
-    // Ham base64 string ko data URI format mein save karenge
-    const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
-    setTempImg(base64Image);
-  }
-};
-
-  const handleOpenMenu = (event: any, member: Customer) => {
+  const handleOpenMenu = (event: any, member: any) => {
     const { pageY } = event.nativeEvent;
     const adjustedTop = pageY > 500 ? pageY - 120 : pageY - 10;
 
     setMenuPosition({ top: adjustedTop, right: 40 });
     setSelectedId(member.id);
-    setTempTitle(member.title);
+    setTempTitle(member.name);
     setTempPhone(member.phone);
-    setTempEmail(member.email);
-    setTempImg(member.image);
+    setTempEmail(member.email || "");
+    setTempImg(member.profile_image);
     setMenuVisible(true);
   };
 
  // 2. handleSaveEdit check karein (wese hi rahega lekin confirm karein tempImg base64 ho)
-const handleSaveEdit = () => {
-  const updated = customers.map((c) =>
-    c.id === selectedId
-      ? {
-          ...c,
-          title: tempTitle,
-          phone: tempPhone,
-          email: tempEmail,
-          image: tempImg, // Ab ye base64 string hogi
-          description: `${tempPhone}\n${tempEmail}`,
-        }
-      : c
-  );
-  setCustomers(updated);
-  persistData(updated);
-  setEditModalVisible(false);
+const handleSaveEdit = async () => {
+  if (!selectedId) return;
+
+  const formData = new FormData();
+  formData.append('name', tempTitle);
+  formData.append('phone', tempPhone);
+  formData.append('email', tempEmail);
+  
+  if (tempImg && !tempImg.startsWith('http')) {
+    const filename = tempImg.split('/').pop();
+    const match = /\.(\w+)$/.exec(filename || '');
+    const type = match ? `image/${match[1]}` : `image`;
+    formData.append('profile_image', { uri: tempImg, name: filename, type } as any);
+  }
+
+  try {
+    await updateClient({ id: selectedId, formData });
+    setEditModalVisible(false);
+  } catch (err) {
+    console.error("Update failed:", err);
+  }
 };
 
-  const confirmDelete = () => {
-    const updated = customers.filter((c) => c.id !== selectedId);
-    setCustomers(updated);
-    persistData(updated);
-    setDeleteModalVisible(false);
+  const confirmDelete = async () => {
+    if (!selectedId) return;
+    try {
+      await deleteClient(selectedId);
+      setDeleteModalVisible(false);
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
   };
 
   return (
@@ -165,25 +150,33 @@ const handleSaveEdit = () => {
           contentContainerStyle={[styles.scrollArea, { paddingBottom: insets.bottom + 60 }]}
           keyboardShouldPersistTaps="handled"
         >
-          {filteredCustomers.map((member) => (
-            <View key={member.id} style={styles.cardContainer}>
-              <ImageDesCard
-                imageSource={{ uri: member.image }}
-                title={member.title}
-                description={member.description}
-                backgroundColor={isDark ? "#1e293b" : "#FFFFFF"}
-                containerStyle={[styles.cardItem, { borderColor: colors.border }]}
-                titleStyle={{ color: colors.text }}
-                descriptionStyle={{ color: colors.textSecondary }}
-              />
-              <TouchableOpacity
-                style={styles.dots}
-                onPress={(e) => handleOpenMenu(e, member)}
-              >
-                <MaterialCommunityIcons name="dots-vertical" size={24} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-          ))}
+          {isLoading ? (
+            <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
+          ) : filteredCustomers.length > 0 ? (
+            filteredCustomers.map((member) => (
+              <View key={member.id} style={styles.cardContainer}>
+                <ImageDesCard
+                  imageSource={member.profile_image ? { uri: member.profile_image } : require('../../../assets/images/icon.png')}
+                  title={member.name}
+                  description={`${member.phone}${member.email ? '\n' + member.email : ''}`}
+                  backgroundColor={isDark ? "#1e293b" : "#FFFFFF"}
+                  containerStyle={[styles.cardItem, { borderColor: colors.border }]}
+                  titleStyle={{ color: colors.text }}
+                  descriptionStyle={{ color: colors.textSecondary }}
+                />
+                <TouchableOpacity
+                  style={styles.dots}
+                  onPress={(e) => handleOpenMenu(e, member)}
+                >
+                  <MaterialCommunityIcons name="dots-vertical" size={24} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+            ))
+          ) : (
+            <Text style={{ textAlign: 'center', color: colors.textSecondary, marginTop: 40 }}>
+              No customers found.
+            </Text>
+          )}
         </ScrollView>
       </SafeAreaView>
 
@@ -253,8 +246,13 @@ const handleSaveEdit = () => {
               <TouchableOpacity
                 style={[styles.confirmBtn, { backgroundColor: '#EF4444' }]}
                 onPress={confirmDelete}
+                disabled={isDeleting}
               >
-                <Text style={[styles.confirmBtnText, { color: '#FFF' }]}>Delete</Text>
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={[styles.confirmBtnText, { color: '#FFF' }]}>Delete</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -316,11 +314,15 @@ const handleSaveEdit = () => {
 
             {/* Action Buttons */}
             <View style={styles.btnGroup}>
-              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)} disabled={isUpdating}>
                 <Text style={styles.cancelLink}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.updateBtn} onPress={handleSaveEdit}>
-                <Text style={styles.updateTxt}>Update</Text>
+              <TouchableOpacity style={styles.updateBtn} onPress={handleSaveEdit} disabled={isUpdating}>
+                {isUpdating ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.updateTxt}>Update</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>

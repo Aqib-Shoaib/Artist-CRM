@@ -1,6 +1,7 @@
 import { useTheme } from '@/contexts/ThemeContext';
 import React from 'react';
 import {
+  GestureResponderEvent,
   Image,
   StyleProp,
   StyleSheet,
@@ -9,6 +10,7 @@ import {
   View,
   ViewStyle
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export interface HistoryCardProps {
   customer: {
@@ -31,6 +33,7 @@ export interface HistoryCardProps {
   phoneColor?: string;
   noteColor?: string;
   dateColor?: string;
+  onMenuPress?: (event: GestureResponderEvent) => void;
 }
 
 const HistoryCard: React.FC<HistoryCardProps> = ({
@@ -50,12 +53,12 @@ const HistoryCard: React.FC<HistoryCardProps> = ({
   phoneColor = '#64748B',
   noteColor = '#475569',
   dateColor = '#5152B3',
+  onMenuPress,
 }) => {
   const { isDark } = useTheme();
 
-  // Logic to show limited data
-  const displayedServices = services.slice(0, 3);
-  const displayedTags = tags.slice(0, 2); // Tags limited to 2
+  const displayedServices = services?.slice(0, 3) || [];
+  const displayedTags = tags?.slice(0, 2) || [];
   const displayedPhotos = photos?.slice(0, 4) || [];
   const morePhotosCount = (photos?.length || 0) - 4;
 
@@ -70,7 +73,6 @@ const HistoryCard: React.FC<HistoryCardProps> = ({
       ]}
     >
       <View style={styles.contentContainer}>
-        {/* 1. Header: Name & Phone */}
         <View style={styles.headerRow}>
           <View style={styles.nameBlock}>
             <Text style={[styles.nameText, { color: titleColor }]} numberOfLines={1}>
@@ -80,7 +82,6 @@ const HistoryCard: React.FC<HistoryCardProps> = ({
           </View>
         </View>
 
-        {/* 2. Services (Limited to 3) */}
         <View style={styles.chipsRow}>
           {displayedServices.map((service, index) => (
             <View key={`s-${index}`} style={[
@@ -90,12 +91,11 @@ const HistoryCard: React.FC<HistoryCardProps> = ({
               <Text style={[styles.serviceChipText, isDark && { color: '#e0e7ff' }]}>{service}</Text>
             </View>
           ))}
-          {services.length > 3 && (
+          {services?.length > 3 && (
              <Text style={[styles.moreText, { color: phoneColor }]}>+{services.length - 3} more</Text>
           )}
         </View>
 
-        {/* 3. Tags (Updated with +more logic) */}
         <View style={styles.chipsRow}>
           {displayedTags.map((tag, index) => (
             <View key={`t-${index}`} style={[
@@ -105,12 +105,11 @@ const HistoryCard: React.FC<HistoryCardProps> = ({
               <Text style={[styles.tagChipText, isDark && { color: '#d1fae5' }]}>{tag}</Text>
             </View>
           ))}
-          {tags.length > 2 && (
+          {tags?.length > 2 && (
             <Text style={[styles.moreText, { color: phoneColor }]}>+{tags.length - 2} more</Text>
           )}
         </View>
 
-        {/* 4. Notes (Limited to 2 lines) */}
         {notes ? (
           <Text 
             style={[styles.notesText, { color: noteColor }]} 
@@ -121,7 +120,6 @@ const HistoryCard: React.FC<HistoryCardProps> = ({
           </Text>
         ) : null}
 
-        {/* 5. Photos Grid (Limited to 4 photos) */}
         {photos && photos.length > 0 && (
           <View style={styles.photoGrid}>
             {displayedPhotos.map((photo, index) => (
@@ -137,12 +135,19 @@ const HistoryCard: React.FC<HistoryCardProps> = ({
           </View>
         )}
 
-        {/* 6. Footer: Date & Time */}
         <View style={styles.footerRow}>
           <View style={styles.dateBlock}>
             <Text style={[styles.dateText, { color: dateColor }]}>  {time} | {date}</Text>
-            {/* <Text style={[styles.timeText, { color: phoneColor }]}>{time}</Text> */}
           </View>
+          {onMenuPress && (
+            <TouchableOpacity 
+              onPress={onMenuPress}
+              style={styles.menuIcon}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <MaterialCommunityIcons name="dots-vertical" size={20} color={phoneColor} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -278,6 +283,11 @@ const styles = StyleSheet.create({
     fontSize: 9,
     marginTop: 1,
   },
+  menuIcon: {
+    marginLeft: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  }
 });
 
 export default HistoryCard;

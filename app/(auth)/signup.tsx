@@ -15,6 +15,7 @@ export default function SignupScreen() {
     <Signup
       onNavigateToLogin={() => router.push('/(auth)/login')}
       onNavigateToCompanyName={() => router.push('/(auth)/company-name')}
+      onNavigateToDashboard={() => router.replace('/(tabs)/dashboard')}
       onBack={() => router.back()}
     />
   );

@@ -13,6 +13,9 @@ import ImageDesCard from '../../common/Cards/ImageDesCard';
 import InfoCard from '../../common/Cards/InfoCard';
 
 import { useTheme } from '@/contexts/ThemeContext';
+import { useDashboardStats } from '@/hooks/useDashboard';
+import { useRecentVisitsList } from '@/hooks/useVisits';
+import { ActivityIndicator } from 'react-native';
 
 interface DashboardProps {
   onBack?: () => void;
@@ -24,6 +27,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
 
+  const { data: stats, isLoading: isStatsLoading } = useDashboardStats();
+  const { data: recentVisits, isLoading: isVisitsLoading } = useRecentVisitsList();
+
   const handleHomePress = () => { };
   const handleNewVisitPress = () => router.push('/(tabs)/new-visit');
   const handleHistoryPress = () => router.push('/(tabs)/history');
@@ -34,19 +40,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   const handleOtherPagePress = () => {
     router.push('/(tabs)/help');
   };
-
-  const visitData = [
-    { id: 1, title: "John Doe", img: require('../../../assets/images/icon.png') },
-    { id: 2, title: "Smith Alex", img: require('../../../assets/images/favicon.png') },
-    { id: 3, title: "Mike Ross", img: require('../../../assets/images/splash-icon.png') },
-    { id: 4, title: "Wilson tel", img: require('../../../assets/images/react-logo.png') },
-    { id: 5, title: "Harvey Specter", img: require('../../../assets/images/icon.png') },
-    { id: 6, title: "Donna Paul", img: require('../../../assets/images/favicon.png') },
-    { id: 7, title: "Louis Litt", img: require('../../../assets/images/splash-icon.png') },
-    { id: 8, title: "Rachel Zane", img: require('../../../assets/images/react-logo.png') },
-    { id: 9, title: "Jessica P.", img: require('../../../assets/images/icon.png') },
-    { id: 10, title: "Daniel H.", img: require('../../../assets/images/favicon.png') },
-  ];
 
   // Computed Styles for Dark Mode
   const navContainerStyle = {
@@ -99,7 +92,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         >
           <View style={styles.statsContainer}>
             <InfoCard
-              title="56"
+              title={isStatsLoading ? "..." : (stats?.total_clients || "0")}
               description="Total Clients"
               backgroundColor={isDark ? "#1e293b" : "#FFFFFF"}
               titleColor={isDark ? "#FFFFFF" : "#1E293B"}
@@ -110,7 +103,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               containerStyle={[styles.premiumInfoCard, { borderColor: colors.border }]}
             />
             <InfoCard
-              title="10"
+              title={isStatsLoading ? "..." : (stats?.active_clients || "0")}
               description="Active Clients"
               backgroundColor={isDark ? "#1e293b" : "#FFFFFF"}
               titleColor={isDark ? "#FFFFFF" : "#313867"}
@@ -137,26 +130,50 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           </View>
 
           <View style={styles.visitGrid}>
-            {[0, 2, 4, 6, 8].map((startIndex) => (
-              <View key={startIndex} style={styles.row}>
-                {visitData.slice(startIndex, startIndex + 2).map((item) => (
-                  <ImageDesCard
-                    key={item.id}
-                    imageSource={item.img}
-                    title={item.title}
-                    description="Last visit: 2 days ago"
-                    backgroundColor={isDark ? "#1e293b" : "#FFFFFF"}
-                    titleStyle={[styles.visitTitle, { color: isDark ? "#FFFFFF" : "#1E293B" }]}
-                    descriptionStyle={[styles.visitDesc, { color: "#94A3B8" }]}
-                    cardMargin={0}
-                    cardPadding={12}
-                    imageSize={40}
-                    elevation={0}
-                    containerStyle={[styles.visitCardBorder, { borderColor: colors.border, backgroundColor: isDark ? "#1e293b" : "#FFFFFF" }]}
-                  />
-                ))}
-              </View>
-            ))}
+            {isVisitsLoading ? (
+               <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
+            ) : recentVisits && recentVisits.length > 0 ? (
+              recentVisits.map((item: any, index: number) => {
+                if (index % 2 === 0) {
+                  const nextItem = recentVisits[index + 1];
+                  return (
+                    <View key={item.id} style={styles.row}>
+                      <ImageDesCard
+                        imageSource={item.client?.profile_image ? { uri: item.client.profile_image } : require('../../../assets/images/icon.png')}
+                        title={item.client?.name || "Unknown"}
+                        description={`Last visit: ${item.visit_date}`}
+                        backgroundColor={isDark ? "#1e293b" : "#FFFFFF"}
+                        titleStyle={[styles.visitTitle, { color: isDark ? "#FFFFFF" : "#1E293B" }]}
+                        descriptionStyle={[styles.visitDesc, { color: "#94A3B8" }]}
+                        cardMargin={0}
+                        cardPadding={12}
+                        imageSize={40}
+                        elevation={0}
+                        containerStyle={[styles.visitCardBorder, { borderColor: colors.border, backgroundColor: isDark ? "#1e293b" : "#FFFFFF" }]}
+                      />
+                      {nextItem && (
+                        <ImageDesCard
+                          imageSource={nextItem.client?.profile_image ? { uri: nextItem.client.profile_image } : require('../../../assets/images/icon.png')}
+                          title={nextItem.client?.name || "Unknown"}
+                          description={`Last visit: ${nextItem.visit_date}`}
+                          backgroundColor={isDark ? "#1e293b" : "#FFFFFF"}
+                          titleStyle={[styles.visitTitle, { color: isDark ? "#FFFFFF" : "#1E293B" }]}
+                          descriptionStyle={[styles.visitDesc, { color: "#94A3B8" }]}
+                          cardMargin={0}
+                          cardPadding={12}
+                          imageSize={40}
+                          elevation={0}
+                          containerStyle={[styles.visitCardBorder, { borderColor: colors.border, backgroundColor: isDark ? "#1e293b" : "#FFFFFF" }]}
+                        />
+                      )}
+                    </View>
+                  );
+                }
+                return null;
+              })
+            ) : (
+              <Text style={{ textAlign: 'center', color: colors.textSecondary, marginTop: 20 }}>No recent visits found.</Text>
+            )}
           </View>
         </ScrollView>
 

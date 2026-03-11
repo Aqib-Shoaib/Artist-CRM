@@ -1,9 +1,13 @@
 import { THEME_COLORS } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
+import { authService } from '@/services/authService';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -29,16 +33,52 @@ interface LoginProps {
   onNavigateToDashboard?: () => void;
 }
 
-const Login: React.FC<LoginProps> = ({
-  onNavigateToDashboard,
-  onNavigateToSignup,
-  onBack
-}) => {
+const Login = ({ onBack, onNavigateToDashboard, onNavigateToSignup }: LoginProps) => {
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [rememberMe, setRememberMe] = useState<boolean>(false);
   const { colors, isDark } = useTheme();
+
+  const loginMutation = useMutation({
+    mutationFn: (data: any) => authService.login(data),
+    onSuccess: async (data: any) => {
+      // Handle successful login (e.g., save token)
+      console.log('Login successful:', data);
+      
+      if (data?.data?.token) {
+        await authService.saveToken(data.data.token);
+        queryClient.setQueryData(['user'], data.data.user);
+      }
+      
+      onNavigateToDashboard?.();
+    },
+    onError: (error: any) => {
+      console.error('Login error:', error);
+      const backendErrors = error.response?.data?.errors;
+      let errorMessage = error.response?.data?.message || 'An error occurred during login';
+
+      if (backendErrors) {
+        const errorDetails = Object.values(backendErrors)
+          .flat()
+          .join('\n');
+        if (errorDetails) {
+          errorMessage = errorDetails;
+        }
+      }
+
+      Alert.alert('Login Failed', errorMessage);
+    },
+  });
+
+  const handleLogin = () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter email and password');
+      return;
+    }
+    loginMutation.mutate({ email, password });
+  };
 
   return (
     <LinearGradient
@@ -130,8 +170,9 @@ const Login: React.FC<LoginProps> = ({
 
                 {/* Login Button */}
                 <TouchableOpacity
-                  onPress={() => onNavigateToDashboard?.()}
+                  onPress={handleLogin}
                   style={styles.buttonWrapper}
+                  disabled={loginMutation.isPending}
                 >
                   <LinearGradient
                     colors={THEME_COLORS.buttonGradient}
@@ -139,7 +180,11 @@ const Login: React.FC<LoginProps> = ({
                     end={{ x: 1, y: 0 }}
                     style={styles.gradientButton}
                   >
-                    <Text style={styles.buttonText}>Login</Text>
+                    {loginMutation.isPending ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.buttonText}>Login</Text>
+                    )}
                   </LinearGradient>
                 </TouchableOpacity>
 

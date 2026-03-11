@@ -4,25 +4,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useVisits } from '@/hooks/useVisits';
+import { useClients } from '@/hooks/useClients';
 import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  Dimensions,
-  GestureResponderEvent,
-  Image,
-  LayoutAnimation,
-  Modal,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  UIManager,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, GestureResponderEvent, Image, LayoutAnimation, Modal, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, UIManager, View } from 'react-native';
 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -33,187 +18,41 @@ import HistoryCard from '../../common/Cards/HistoryCard';
 import FilterInput, { FilterSection } from '../../common/Inputs/FilterInput';
 import SearchInput from '../../common/Inputs/SearchInput';
 import Input from '../../common/Inputs/Input';
+import { Visit } from '@/services/visitService';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 type IonIconName = React.ComponentProps<typeof Ionicons>['name'];
-
-interface Customer {
-  id: string;
-  name: string;
-  phone: string;
-}
-
-interface HistoryItem {
-  id: number;
-  customer: {
-    name: string;
-    phone: string;
-    img?: string;
-  };
-  services: string[];
-  tags: string[];
-  notes?: string;
-  photos?: string[];
-  date: string;
-  time: string;
-}
 
 interface HistoryProps {
   onBack?: () => void;
   onNavigateToNewVisit?: () => void;
 }
 
-const CUSTOMERS_DATA: Customer[] = [
-  { id: '1', name: 'Ahmad Ali', phone: '0300-1234567' },
-  { id: '2', name: 'Sara Khan', phone: '0312-7654321' },
-  { id: '3', name: 'Zeenat Malik', phone: '0345-1122334' },
-  { id: '4', name: 'Hamza Sheikh', phone: '0321-9988776' },
-  { id: '5', name: 'Danish Ahmed', phone: '0333-5544332' },
-  { id: '6', name: 'Bilal Khan', phone: '0301-7654321' },
-  { id: '7', name: 'Fahad Mustafa', phone: '0312-5566778' },
-  { id: '8', name: 'Yasir Hussain', phone: '0302-8899001' },
-  { id: '9', name: 'Saad Qureshi', phone: '0322-1112223' },
-  { id: '10', name: 'Rizwan Baig', phone: '0300-9988776' },
-  // Jitni bari list hogi, ScrollView automatically handle kar lega
-];
+// Mock data removed for API integration
 
 const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
 
-  const defaultHistory: HistoryItem[] = [
-    {
-      id: 1,
-      customer: { name: "Ahmad Ali", phone: "0300-1234567", img: 'https://i.pravatar.cc/150?u=1' },
-      services: ["Haircut", "Shaving"],
-      tags: ["Regular"],
-      notes: "Prefer shorter sides, sharp fade.",
-      photos: ["https://picsum.photos/200/300"],
-      date: "14 Jan 2026",
-      time: "10:30 AM"
-    },
-    {
-      id: 2,
-      customer: { name: "Bilal Khan", phone: "0301-7654321", img: 'https://i.pravatar.cc/150?u=2' },
-      services: ["Facial", "Massage"],
-      tags: ["VIP"],
-      notes: "Sensitive skin, use herbal products.",
-      photos: ["https://picsum.photos/200/301"],
-      date: "15 Jan 2026",
-      time: "11:00 AM"
-    },
-    {
-      id: 3,
-      customer: { name: "Hamza Ahmed", phone: "0321-9876543", img: 'https://i.pravatar.cc/150?u=3' },
-      services: ["Styling", "Color"],
-      tags: ["New"],
-      notes: "Looking for a modern ash grey look.",
-      photos: ["https://picsum.photos/200/302"],
-      date: "16 Jan 2026",
-      time: "12:15 PM"
-    },
-    {
-      id: 4,
-      customer: { name: "Usman Ghani", phone: "0333-1122334", img: 'https://i.pravatar.cc/150?u=4' },
-      services: ["Haircut"],
-      tags: ["Regular"],
-      notes: "Standard crew cut.",
-      photos: [],
-      date: "17 Jan 2026",
-      time: "01:00 PM"
-    },
-    {
-      id: 5,
-      customer: { name: "Zain Malik", phone: "0345-4455667", img: 'https://i.pravatar.cc/150?u=5' },
-      services: ["Beard Trim", "Haircut"],
-      tags: ["VIP"],
-      notes: "Line up beard carefully.",
-      photos: ["https://picsum.photos/200/303"],
-      date: "18 Jan 2026",
-      time: "02:30 PM"
-    },
-    {
-      id: 6,
-      customer: { name: "Fahad Mustafa", phone: "0312-5566778", img: 'https://i.pravatar.cc/150?u=6' },
-      services: ["Massage", "Steam"],
-      tags: ["New"],
-      notes: "Requires shoulder relaxation.",
-      photos: [],
-      date: "19 Jan 2026",
-      time: "04:00 PM"
-    },
-    {
-      id: 7,
-      customer: { name: "Yasir Hussain", phone: "0302-8899001", img: 'https://i.pravatar.cc/150?u=7' },
-      services: ["Color", "Highlights"],
-      tags: ["Premium"],
-      notes: "Golden highlights on top.",
-      photos: ["https://picsum.photos/200/304"],
-      date: "20 Jan 2026",
-      time: "05:15 PM"
-    },
-    {
-      id: 8,
-      customer: { name: "Omer Shah", phone: "0344-2233445", img: 'https://i.pravatar.cc/150?u=8' },
-      services: ["Haircut", "Facial"],
-      tags: ["Regular"],
-      notes: "Before wedding prep.",
-      photos: ["https://picsum.photos/200/305"],
-      date: "21 Jan 2026",
-      time: "06:00 PM"
-    },
-    {
-      id: 9,
-      customer: { name: "Saad Qureshi", phone: "0322-1112223", img: 'https://i.pravatar.cc/150?u=9' },
-      services: ["Shaving"],
-      tags: ["Regular"],
-      notes: "Clean shave with hot towel.",
-      photos: [],
-      date: "22 Jan 2026",
-      time: "10:00 AM"
-    },
-    {
-      id: 10,
-      customer: { name: "Rizwan Baig", phone: "0300-9988776", img: 'https://i.pravatar.cc/150?u=10' },
-      services: ["Styling", "Beard Trim"],
-      tags: ["VIP"],
-      notes: "High volume quiff.",
-      photos: ["https://picsum.photos/200/306"],
-      date: "23 Jan 2026",
-      time: "11:45 AM"
-    },
-  ];
+  // --- Hooks & Services ---
+  const { visits, isLoading: isVisitsLoading, deleteVisit, isDeleting, updateVisit, isUpdating } = useVisits();
+  const { clients } = useClients();
 
-  const [historyItems, setHistoryItems] = useState<HistoryItem[]>(defaultHistory);
   const [searchText, setSearchText] = useState<string>('');
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
   const [isFilterVisible, setIsFilterVisible] = useState<boolean>(false);
   const [menuVisible, setMenuVisible] = useState<boolean>(false);
   const [editModalVisible, setEditModalVisible] = useState<boolean>(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | number | null>(null);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
   const [headerMenuVisible, setHeaderMenuVisible] = useState(false);
-
   const [customerDropdownVisible, setCustomerDropdownVisible] = useState(false);
-
-  // Find your handleSelectCustomer and replace it with this:
-  const handleSelectCustomer = (name: string) => {
-    // Update activeFilters to include the selected customer
-    setActiveFilters(prev => ({
-      ...prev,
-      selected_customer: name
-    }));
-
-    // Close the dropdown and clear search text for a clean UI
-    setCustomerDropdownVisible(false);
-    setSearchText('');
-  };
 
   // Sorting State
   const [sortOption, setSortOption] = useState<string>('newest');
@@ -222,19 +61,18 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
   // Edit Modal Specific UI State
   const [expandedSection, setExpandedSection] = useState<string | null>('customer');
 
+  const topServices = ['Haircut', 'Coloring', 'Styling'];
+  const topTags = ['Premium', 'Regular', 'VIP'];
+
   // Edit Modal Data States
   const [customerSearch, setCustomerSearch] = useState<string>('');
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
 
-  const [allServices, setAllServices] = useState<string[]>(['Haircut', 'Coloring', 'Styling', 'Facial', 'Treatment', 'Shaving']);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [serviceSearch, setServiceSearch] = useState<string>('');
-  const topServices = ['Haircut', 'Coloring', 'Styling'];
 
-  const [allTags, setAllTags] = useState<string[]>(['Premium', 'Regular', 'VIP', 'New', 'Color']);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagSearch, setTagSearch] = useState<string>('');
-  const topTags = ['Premium', 'Regular', 'VIP'];
 
   const [tempNotes, setTempNotes] = useState<string>('');
   const [tempPhotos, setTempPhotos] = useState<string[]>([]);
@@ -273,36 +111,7 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
     },
   ];
 
-  useEffect(() => {
-    const loadHistory = async () => {
-      try {
-        const savedString = await AsyncStorage.getItem('permanently_deleted_history');
-        if (savedString) {
-          const parsedData = JSON.parse(savedString);
-          if (Array.isArray(parsedData) && parsedData.length >= 10) {
-            setHistoryItems(parsedData);
-          } else {
-            setHistoryItems(defaultHistory);
-          }
-        } else {
-          setHistoryItems(defaultHistory);
-        }
-      } catch (err) {
-        console.error("Error loading storage", err);
-      }
-    };
-    loadHistory();
-  }, []);
-
-  const persistHistory = async (updatedList: HistoryItem[]) => {
-    try {
-      await AsyncStorage.setItem('permanently_deleted_history', JSON.stringify(updatedList));
-    } catch (err) {
-      console.error("Error saving storage", err);
-    }
-  };
-
-  const filteredCustomers = CUSTOMERS_DATA.filter(c =>
+  const filteredCustomers = (clients || []).filter(c =>
     c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
     c.phone.includes(customerSearch)
   );
@@ -320,13 +129,11 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
     if (type === 'service') {
       if (!selectedServices.includes(trimmedVal)) {
         setSelectedServices([...selectedServices, trimmedVal]);
-        if (!allServices.includes(trimmedVal)) setAllServices([...allServices, trimmedVal]);
       }
       setServiceSearch('');
     } else {
       if (!selectedTags.includes(trimmedVal)) {
         setSelectedTags([...selectedTags, trimmedVal]);
-        if (!allTags.includes(trimmedVal)) setAllTags([...allTags, trimmedVal]);
       }
       setTagSearch('');
     }
@@ -355,54 +162,49 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
     setTempPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleOpenMenu = (event: GestureResponderEvent, item: HistoryItem) => {
+  const handleOpenMenu = (event: GestureResponderEvent, item: any) => {
     const { pageY } = event.nativeEvent;
     const screenHeight = Dimensions.get('window').height;
-
-    // Agar click screen ke darmyan (50%) se niche hai
-    // Toh menu ko upar ki taraf shift kar dein
     const isLowerHalf = pageY > screenHeight / 2;
-
-    // AdjustedTop logic: 
-    // Agar niche hai toh click point se 130 units upar (taake nav bar se bach sakay)
-    // Agar upar hai toh click point ke paas hi
     const adjustedTop = isLowerHalf ? pageY - 140 : pageY - 10;
 
     setMenuPosition({ top: adjustedTop, right: 40 });
     setSelectedId(item.id);
 
-    // Data states (aapka purana code)
-    setCustomerSearch(item.customer.name);
-    setSelectedCustomer({ id: '', name: item.customer.name, phone: item.customer.phone });
-    setSelectedServices(item.services);
-    setSelectedTags(item.tags);
+    setCustomerSearch(item.client?.name || "");
+    setSelectedCustomer(item.client);
+    setSelectedServices(item.services || []);
+    setSelectedTags(item.tags || []);
     setTempNotes(item.notes || "");
-    setTempPhotos(item.photos || []);
+    setTempPhotos(item.photos?.map((p: any) => p.url) || []);
 
     setMenuVisible(true);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (selectedId === null) return;
-    const updated = historyItems.map((item) =>
-      item.id === selectedId
-        ? {
-          ...item,
-          customer: {
-            ...item.customer,
-            name: selectedCustomer?.name || item.customer.name,
-            phone: selectedCustomer?.phone || item.customer.phone
-          },
-          services: selectedServices,
-          tags: selectedTags,
-          notes: tempNotes,
-          photos: tempPhotos
-        }
-        : item
-    );
-    setHistoryItems(updated);
-    persistHistory(updated);
-    setEditModalVisible(false);
+    
+    const formData = new FormData();
+    formData.append('notes', tempNotes);
+    formData.append('client_id', selectedCustomer?.id.toString() || "");
+    selectedServices.forEach(s => formData.append('services[]', s));
+    selectedTags.forEach(t => formData.append('tags[]', t));
+
+    tempPhotos.forEach((uri) => {
+      if (!uri.startsWith('http')) {
+        const filename = uri.split('/').pop();
+        const match = /\.(\w+)$/.exec(filename || '');
+        const type = match ? `image/${match[1]}` : `image`;
+        formData.append('photos[]', { uri, name: filename, type } as any);
+      }
+    });
+
+    try {
+      await updateVisit({ id: selectedId, formData });
+      setEditModalVisible(false);
+    } catch (err) {
+      console.error("Update visit failed:", err);
+    }
   };
 
   const handleViewDetails = () => {
@@ -416,105 +218,72 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
     setMenuVisible(false);
   };
 
-  const confirmDeleteItem = () => {
+  const confirmDeleteItem = async () => {
     if (selectedId === null) return;
-    const filtered = historyItems.filter((item) => item.id !== selectedId);
-    setHistoryItems(filtered);
-    persistHistory(filtered);
-    setDeleteModalVisible(false);
-  };
-
-  const parseDate = (dateStr: string | undefined | null): number => {
     try {
-      if (!dateStr) return 0;
-
-      const months: { [key: string]: number } = {
-        Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-        Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
-      };
-
-      const parts = dateStr.split(' ');
-
-      // Handle "DD MMM YYYY" format
-      if (parts.length >= 3) {
-        const day = parseInt(parts[0], 10);
-        const month = months[parts[1]];
-        const year = parseInt(parts[2], 10);
-
-        if (!isNaN(day) && month !== undefined && !isNaN(year)) {
-          return new Date(year, month, day).getTime();
-        }
-      }
-
-      // Standard date fallback
-      const parsed = Date.parse(dateStr);
-      return isNaN(parsed) ? 0 : parsed;
-    } catch (error) {
-      console.error("Error parsing date:", dateStr);
-      return 0;
+      await deleteVisit(selectedId);
+      setDeleteModalVisible(false);
+    } catch (err) {
+      console.error("Delete visit failed:", err);
     }
   };
 
-  const filteredData = historyItems.filter((item) => {
-    if (!item || !item.customer) return false;
+// function moved or removed
+
+  const filteredData = (visits || []).filter((item) => {
+    if (!item || !item.client) return false;
     const query = searchText.toLowerCase().trim();
 
     // 1. Global Search
     const searchMatch = !query ? true : (
-      (item.customer.name || "").toLowerCase().includes(query) ||
-      (item.customer.phone || "").includes(query) ||
-      (item.services || []).some(s => s.toLowerCase().includes(query)) ||
+      (item.client.name || "").toLowerCase().includes(query) ||
+      (item.client.phone || "").includes(query) ||
+      (item.services || []).some((s: string) => s.toLowerCase().includes(query)) ||
       (item.notes || "").toLowerCase().includes(query) ||
-      (item.tags || []).some(t => t.toLowerCase().includes(query))
+      (item.tags || []).some((t: string) => t.toLowerCase().includes(query))
     );
 
     // 2. Customer Filter
     const customerFilter = activeFilters.selected_customer as string | undefined;
-    const customerMatch = customerFilter ? item.customer.name === customerFilter : true;
+    const customerMatch = customerFilter ? item.client.name === customerFilter : true;
 
     // 3. Service Filter (Multi Select)
     const serviceFilters = (activeFilters.category_filter as string[]) || [];
     const serviceMatch = serviceFilters.length > 0
-      ? (item.services || []).some(s => serviceFilters.some(filter => s.includes(filter)))
+      ? (item.services || []).some((s: string) => serviceFilters.some(filter => s.includes(filter)))
       : true;
 
     // 4. Tag Filter (Multi Select)
     const tagFilters = (activeFilters.tag_filter as string[]) || [];
     const tagMatch = tagFilters.length > 0
-      ? (item.tags || []).some(t => tagFilters.some(filter => t.includes(filter)))
+      ? (item.tags || []).some((t: string) => tagFilters.some(filter => t.includes(filter)))
       : true;
 
     // 5. Date Filter (Range)
     const dateFilter = activeFilters.date_filter as { start?: string; end?: string } | undefined;
     let dateRangeMatch = true;
     if (dateFilter && (dateFilter.start || dateFilter.end)) {
-      const itemDate = parseDate(item.date);
-      const startDate = dateFilter.start ? parseDate(dateFilter.start) : 0;
-
-      // End date logic: end of day include karne ke liye milliseconds add kiye hain
+      const itemDate = new Date(item.visit_date).getTime();
+      const startDate = dateFilter.start ? new Date(dateFilter.start).getTime() : 0;
       let endDate = Number.MAX_SAFE_INTEGER;
       if (dateFilter.end) {
-        const parsedEnd = parseDate(dateFilter.end);
-        if (parsedEnd > 0) endDate = parsedEnd + 86399999;
+        endDate = new Date(dateFilter.end).getTime() + 86399999;
       }
-
-      if (itemDate > 0) {
-        dateRangeMatch = itemDate >= startDate && itemDate <= endDate;
-      }
+      dateRangeMatch = itemDate >= startDate && itemDate <= endDate;
     }
 
     return searchMatch && customerMatch && serviceMatch && tagMatch && dateRangeMatch;
   }).sort((a, b) => {
     switch (sortOption) {
       case 'name_asc':
-        return (a.customer.name || "").localeCompare(b.customer.name || "");
+        return (a.client?.name || "").localeCompare(b.client?.name || "");
       case 'name_desc':
-        return (b.customer.name || "").localeCompare(a.customer.name || "");
+        return (b.client?.name || "").localeCompare(a.client?.name || "");
       case 'oldest':
-        return parseDate(a.date) - parseDate(b.date);
+        return new Date(a.visit_date).getTime() - new Date(b.visit_date).getTime();
       case 'newest':
       default:
-        return parseDate(b.date) - parseDate(a.date);
+        return new Date(b.visit_date).getTime() - new Date(a.visit_date).getTime();
     }
   });
 
@@ -589,7 +358,7 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
                 {customerDropdownVisible && (
                   <View style={[styles.customerDropdownMenu, { backgroundColor: isDark ? "#1e293b" : "#FFFFFF", borderColor: colors.border }]}>
                     <ScrollView bounces={false} style={{ maxHeight: 250 }}>
-                      {CUSTOMERS_DATA.map((item) => (
+                      {(clients || []).map((item) => (
                         <TouchableOpacity
                           key={item.id}
                           style={[styles.customerDropDownItem, { borderBottomColor: colors.border }]}
@@ -794,7 +563,7 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
                           color: sortOption === opt.value ? colors.primary : (isDark ? '#CBD5E1' : '#475569'),
                           fontWeight: sortOption === opt.value ? '600' : '400'
                         }}>
-                          {opt.label}
+                          {opt.label.replace(/"/g, '&quot;')}
                         </Text>
                         {sortOption === opt.value && <Ionicons name="checkmark" size={14} color={colors.primary} />}
                       </TouchableOpacity>
@@ -807,33 +576,35 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
 
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.listContent, { paddingBottom: 80 + insets.bottom }]}
+            contentContainerStyle={[styles.mainScroll, { paddingBottom: insets.bottom + 80 }]}
           >
-            {filteredData.map((item) => (
-              <View key={item.id} style={styles.cardOuterWrapper}>
+            {isVisitsLoading ? (
+              <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+            ) : filteredData.length > 0 ? (
+              filteredData.map((item: Visit) => (
                 <HistoryCard
-                  customer={item.customer}
-                  services={item.services}
-                  tags={item.tags}
-                  notes={item.notes}
-                  photos={item.photos}
-                  date={item.date}
-                  time={item.time}
-                  onPress={() => requestAnimationFrame(() => router.push('/(tabs)/view-history'))} containerStyle={[styles.cardItem, { borderColor: colors.border }]}
-                  backgroundColor={isDark ? "#1e293b" : "#FFFFFF"}
-                  titleColor={isDark ? "#FFFFFF" : "#1E293B"}
-                  phoneColor={isDark ? "#94A3B8" : "#64748B"}
-                  noteColor={isDark ? "#CBD5E1" : "#475569"}
-                  dateColor={isDark ? "#818CF8" : "#5152B3"}
+                  key={item.id}
+                  customer={item.client ? { 
+                    name: item.client.name, 
+                    phone: item.client.phone, 
+                    img: item.client.profile_image 
+                  } : { name: "Unknown", phone: "" }}
+                  services={item.services?.map((s: any) => s.name) || []}
+                  tags={item.tags?.map((t: any) => t.name) || []}
+                  date={item.visit_date}
+                  time={item.visit_time}
+                  containerStyle={{ borderColor: colors.border }}
+                  onMenuPress={(e: any) => handleOpenMenu(e, item)}
                 />
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={(e) => handleOpenMenu(e, item)}
-                >
-                  <MaterialCommunityIcons name="dots-vertical" size={24} color="#64748B" />
-                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.noDataContainer}>
+                <Ionicons name="calendar-outline" size={60} color={colors.textSecondary} />
+                <Text style={[styles.noDataText, { color: colors.textSecondary }]}>
+                  No history found for these filters
+                </Text>
               </View>
-            ))}
+            )}
           </ScrollView>
 
           {/* Menu Popover */}
@@ -904,7 +675,7 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
                             backgroundColor={isDark ? "#1e293b" : "#FFFFFF"}
 
                             // --- YEH HACK USE KAREIN ---
-                            // Isse design wahi rahega jo Input component ka hai, 
+                            // Isse design wahi rahega jo Input component ka hai,
                             // lekin text color white force ho jayega.
                             {...({
                               style: { color: isDark ? "#FFFFFF" : "#1E293B" }
@@ -1097,20 +868,19 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
                     )}
                   </View>
 
-                  <View style={styles.actionRow}>
-                    <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                      <Text style={styles.cancelBtnText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={handleSaveEdit}>
-                      <LinearGradient
-                        colors={THEME_COLORS.buttonGradient}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                        style={styles.saveBtn}
-                      >
-                        <Text style={styles.saveBtnText}>Update</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
+                  {/* Action Buttons */}
+            <View style={styles.btnGroup}>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)} disabled={isUpdating}>
+                <Text style={styles.cancelLink}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.updateBtn} onPress={handleSaveEdit} disabled={isUpdating}>
+                {isUpdating ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.updateTxt}>Update</Text>
+                )}
+              </TouchableOpacity>
+            </View>
 
                 </ScrollView>
               </View>
@@ -1150,11 +920,16 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
                         <Text style={styles.cancelBtnText}>Cancel</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.saveBtn, { backgroundColor: '#EF4444' }]}
-                        onPress={confirmDeleteItem}
-                      >
-                        <Text style={styles.saveBtnText}>Delete</Text>
-                      </TouchableOpacity>
+                style={[styles.confirmBtn, { backgroundColor: '#EF4444' }]}
+                onPress={confirmDeleteItem}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={[styles.confirmBtnText, { color: '#FFF' }]}>Delete</Text>
+                )}
+              </TouchableOpacity>
                     </View>
                   </View>
                 </TouchableWithoutFeedback>
@@ -1530,6 +1305,56 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#94A3B8',
     marginTop: 2,
+  },
+  mainScroll: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  noDataContainer: {
+    alignItems: 'center',
+    marginTop: 100,
+    paddingHorizontal: 40,
+  },
+  noDataText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 20,
+    textAlign: 'center',
+  },
+  btnGroup: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 20,
+    marginTop: 20,
+  },
+  cancelLink: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#94A3B8',
+  },
+  updateBtn: {
+    backgroundColor: '#5152B3',
+    paddingVertical: 10,
+    paddingHorizontal: 25,
+    borderRadius: 12,
+  },
+  updateTxt: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  confirmBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 25,
+    borderRadius: 12,
+    minWidth: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
 

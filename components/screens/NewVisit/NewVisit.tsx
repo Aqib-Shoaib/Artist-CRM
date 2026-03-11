@@ -27,6 +27,9 @@ import { useRouter } from 'expo-router';
 
 import { THEME_COLORS } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useClients } from '@/hooks/useClients';
+import { useVisits } from '@/hooks/useVisits';
+import { useCatalogServices, useCatalogTags } from '@/hooks/useCatalog';
 import NavHeader from '../../common/Buttons/NavHeader';
 import Input from '../../common/Inputs/Input';
 
@@ -37,49 +40,33 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const { width } = Dimensions.get('window');
 type IonIconName = React.ComponentProps<typeof Ionicons>['name'];
 
-interface Customer {
-  id: string;
-  name: string;
-  phone: string;
-}
-
-interface NewVisitProps {
-  onBack: () => void;
-  onNavigateToWelcome?: () => void;
-}
-
-const CUSTOMERS_DATA: Customer[] = [
-  { id: '1', name: 'Ahmad Ali', phone: '0300-1234567' },
-  { id: '2', name: 'Sara Khan', phone: '0312-7654321' },
-  { id: '3', name: 'Zeenat Malik', phone: '0345-1122334' },
-  { id: '4', name: 'Hamza Sheikh', phone: '0321-9988776' },
-  { id: '5', name: 'Danish Ahmed', phone: '0333-5544332' },
-];
-
 const NewVisit: React.FC<NewVisitProps> = ({ onBack }) => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, isDark } = useTheme();
 
+  // --- Hooks & Services ---
+  const { clients, isLoading: isClientsLoading } = useClients();
+  const { createVisit, isCreating } = useVisits();
+  const { data: catalogServices } = useCatalogServices();
+  const { data: catalogTags } = useCatalogTags();
+
   // --- States ---
   const [expandedSection, setExpandedSection] = useState<string | null>('customer');
   const [customerSearch, setCustomerSearch] = useState<string>('');
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
 
-  const [allServices, setAllServices] = useState<string[]>(['Haircut', 'Coloring', 'Styling', 'Facial', 'Treatment', 'Shaving']);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [serviceSearch, setServiceSearch] = useState<string>('');
-  const topServices = ['Haircut', 'Coloring', 'Styling'];
+  const topServices = catalogServices?.slice(0, 3).map((s: any) => s.name) || ['Haircut', 'Coloring', 'Styling'];
 
-  const [allTags, setAllTags] = useState<string[]>(['Premium', 'Regular', 'VIP', 'New', 'Color']);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagSearch, setTagSearch] = useState<string>('');
-  const topTags = ['Premium', 'Regular', 'VIP'];
+  const topTags = catalogTags?.slice(0, 3).map((t: any) => t.name) || ['Premium', 'Regular', 'VIP'];
 
   const [notes, setNotes] = useState<string>('');
-  const [isNotesFocused, setIsNotesFocused] = useState<boolean>(false); // State for focus border
+  const [isNotesFocused, setIsNotesFocused] = useState<boolean>(false);
   const [images, setImages] = useState<string[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const slideAnim = useRef(new Animated.Value(-150)).current;
 
@@ -88,20 +75,24 @@ const NewVisit: React.FC<NewVisitProps> = ({ onBack }) => {
   const [errorMessage, setErrorMessage] = useState("");
 
   // --- Filter Logic ---
-  const filteredCustomers = CUSTOMERS_DATA.filter(c =>
+  const filteredCustomers = (clients || []).filter(c =>
     c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
     c.phone.includes(customerSearch)
   );
 
-  const filteredServices = allServices.filter(s =>
-    s.toLowerCase().includes(serviceSearch.toLowerCase()) &&
-    !selectedServices.includes(s)
-  );
+  const filteredServices = (catalogServices || [])
+    .map((s: any) => s.name)
+    .filter((s: string) =>
+      s.toLowerCase().includes(serviceSearch.toLowerCase()) &&
+      !selectedServices.includes(s)
+    );
 
-  const filteredTags = allTags.filter(t =>
-    t.toLowerCase().includes(tagSearch.toLowerCase()) &&
-    !selectedTags.includes(t)
-  );
+  const filteredTags = (catalogTags || [])
+    .map((t: any) => t.name)
+    .filter((t: string) =>
+      t.toLowerCase().includes(tagSearch.toLowerCase()) &&
+      !selectedTags.includes(t)
+    );
 
   // --- Handlers ---
   const closeDropdowns = () => {
@@ -126,13 +117,11 @@ const NewVisit: React.FC<NewVisitProps> = ({ onBack }) => {
     if (type === 'service') {
       if (!selectedServices.includes(trimmedVal)) {
         setSelectedServices([...selectedServices, trimmedVal]);
-        if (!allServices.includes(trimmedVal)) setAllServices([...allServices, trimmedVal]);
       }
       setServiceSearch('');
     } else {
       if (!selectedTags.includes(trimmedVal)) {
         setSelectedTags([...selectedTags, trimmedVal]);
-        if (!allTags.includes(trimmedVal)) setAllTags([...allTags, trimmedVal]);
       }
       setTagSearch('');
     }
@@ -160,8 +149,8 @@ const NewVisit: React.FC<NewVisitProps> = ({ onBack }) => {
     setExpandedSection('customer');
   };
 
-  const handleSave = () => {
-    if (loading) return;
+  const handleSave = async () => {
+    if (isCreating) return;
 
     // Validation
     if (!selectedCustomer) {
@@ -175,20 +164,32 @@ const NewVisit: React.FC<NewVisitProps> = ({ onBack }) => {
       return;
     }
 
-    setLoading(true);
+    const formData = new FormData();
+    formData.append('client_id', selectedCustomer.id.toString());
+    formData.append('visit_date', new Date().toISOString().split('T')[0]);
+    formData.append('visit_time', new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    formData.append('notes', notes);
     
-    // Simulate API Call
-    setTimeout(() => {
-      setLoading(false);
-      setShowSuccess(true);
+    selectedServices.forEach(s => formData.append('services[]', s));
+    selectedTags.forEach(t => formData.append('tags[]', t));
 
+    images.forEach((uri, index) => {
+      const filename = uri.split('/').pop();
+      const match = /\.(\w+)$/.exec(filename || '');
+      const type = match ? `image/${match[1]}` : `image`;
+      formData.append('photos[]', { uri, name: filename, type } as any);
+    });
+
+    try {
+      await createVisit(formData);
+      setShowSuccess(true);
+      
       Animated.spring(slideAnim, {
         toValue: Platform.OS === 'android' ? 50 : 60,
         useNativeDriver: true,
         bounciness: 10
       }).start();
 
-      // Notification dikhane ke baad ka process
       setTimeout(() => {
         Animated.timing(slideAnim, { 
           toValue: -150, 
@@ -196,15 +197,15 @@ const NewVisit: React.FC<NewVisitProps> = ({ onBack }) => {
           useNativeDriver: true 
         }).start(() => {
           setShowSuccess(false);
-          
-          // Screen se bahar jane se pehle data clear karein
           resetForm(); 
-          
-          // Ab back jayein
           onBack(); 
         });
       }, 2000);
-    }, 1500);
+    } catch (err) {
+      console.error("Save visit failed:", err);
+      setErrorMessage("Failed to save visit. Please try again.");
+      setShowValidationError(true);
+    }
   };
 
   const handleImagePick = async () => {
@@ -243,14 +244,14 @@ const NewVisit: React.FC<NewVisitProps> = ({ onBack }) => {
 
         <SafeAreaView style={styles.masterContainer} edges={['top', 'bottom']}>
           <NavHeader title="Add New Visit !" showProfileIcon={false} titleColor={isDark ? "#FFFFFF" : "#5152B3"}>
-            <TouchableOpacity onPress={handleSave} activeOpacity={0.8} disabled={loading}>
+            <TouchableOpacity onPress={handleSave} activeOpacity={0.8} disabled={isCreating}>
               <LinearGradient
                 colors={THEME_COLORS.buttonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.saveHeaderBtn}
               >
-                {loading ? (
+                {isCreating ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <Text style={styles.saveBtnText}>Save</Text>

@@ -1,9 +1,13 @@
 import { THEME_COLORS } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
+import { authService } from '@/services/authService';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   Keyboard,
@@ -29,10 +33,13 @@ type SignupProps = {
   onBack: () => void;
   onNavigateToCompanyName?: () => void;
   onNavigateToLogin?: () => void;
+  onNavigateToDashboard?: () => void;
 };
 
-const Signup = ({ onBack, onNavigateToCompanyName, onNavigateToLogin }: SignupProps) => {
+const Signup = ({ onBack, onNavigateToCompanyName, onNavigateToLogin, onNavigateToDashboard }: SignupProps) => {
   const { colors, isDark } = useTheme();
+  const queryClient = useQueryClient();
+  const [name, setName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
@@ -53,6 +60,69 @@ const Signup = ({ onBack, onNavigateToCompanyName, onNavigateToLogin }: SignupPr
       keyboardDidHideListener.remove();
     };
   }, []);
+
+  const signupMutation = useMutation({
+    mutationFn: (data: any) => authService.register(data),
+    onSuccess: async (data: any) => {
+      console.log('Signup successful:', data);
+      
+      // Save token and user data
+      if (data?.data?.token) {
+        await authService.saveToken(data.data.token);
+        queryClient.setQueryData(['user'], data.data.user);
+      }
+      
+      // Redirect to Company Name screen so user can finish setup
+      onNavigateToCompanyName?.();
+    },
+    onError: (error: any) => {
+      console.error('Signup error:', error);
+      const backendErrors = error.response?.data?.errors;
+      let errorMessage = error.response?.data?.message || 'An error occurred during signup';
+      
+      if (backendErrors) {
+        // Concatenate all error messages into a single string
+        const errorDetails = Object.values(backendErrors)
+          .flat()
+          .join('\n');
+        if (errorDetails) {
+          errorMessage = errorDetails;
+        }
+      }
+      
+      Alert.alert('Signup Failed', errorMessage);
+    },
+  });
+
+  const handleSignup = () => {
+    if (!name || !email || !password || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+    if (!validatePassword(password)) {
+      Alert.alert('Error', 'Password must be at least 8 characters long');
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+    if (!agreeTerms) {
+      Alert.alert('Error', 'Please agree to the terms and services');
+      return;
+    }
+    signupMutation.mutate({
+      name,
+      email,
+      password,
+      password_confirmation: confirmPassword
+    });
+  };
+
+  const validatePassword = (pass: string) => {
+    // Basic password validation: min 8 chars
+    return pass.length >= 8;
+  };
 
   return (
     <LinearGradient
@@ -93,6 +163,24 @@ const Signup = ({ onBack, onNavigateToCompanyName, onNavigateToLogin }: SignupPr
 
               <View style={styles.formContainer}>
                 <Input
+                  value={name}
+                  onChangeText={(text: string) => setName(text)}
+                  placeholder="Full Name"
+                  leftIcon={"account" as IconNames}
+                  containerStyle={styles.inputContainer}
+                  backgroundColor={isDark ? '#1e293b' : '#FFFFFF'}
+                  focusBorderColor={isDark ? '#FFFFFF' : '#5152B3'}
+                  borderColor={colors.border}
+                  inputStyle={{ color: colors.text }}
+                  placeholderTextColor={isDark ? '#94a3b8' : '#888'}
+                  iconColor={isDark ? '#cbd5e1' : '#666'}
+                  size="large"
+                  variant="outlined"
+                />
+
+                <View style={styles.inputGap} />
+
+                <Input
                   value={email}
                   onChangeText={(text: string) => setEmail(text)}
                   placeholder="Email Address"
@@ -108,7 +196,6 @@ const Signup = ({ onBack, onNavigateToCompanyName, onNavigateToLogin }: SignupPr
                   iconColor={isDark ? '#cbd5e1' : '#666'}
                   size="large"
                   variant="outlined"
-
                 />
 
                 <View style={styles.inputGap} />
@@ -167,8 +254,9 @@ const Signup = ({ onBack, onNavigateToCompanyName, onNavigateToLogin }: SignupPr
 
                 {/* Signup Button */}
                 <TouchableOpacity
-                  onPress={() => onNavigateToCompanyName?.()}
+                  onPress={handleSignup}
                   style={styles.buttonWrapper}
+                  disabled={signupMutation.isPending}
                 >
                   <LinearGradient
                     colors={THEME_COLORS.buttonGradient}
@@ -176,7 +264,11 @@ const Signup = ({ onBack, onNavigateToCompanyName, onNavigateToLogin }: SignupPr
                     end={{ x: 1, y: 0 }}
                     style={styles.gradientButton}
                   >
-                    <Text style={styles.buttonText}>Signup</Text>
+                    {signupMutation.isPending ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.buttonText}>Signup</Text>
+                    )}
                   </LinearGradient>
                 </TouchableOpacity>
 
@@ -245,6 +337,7 @@ const styles = StyleSheet.create({
   formContainer: {
     width: '100%',
     alignItems: 'center',
+    marginTop: 20,
   },
   inputContainer: {
     width: '100%',

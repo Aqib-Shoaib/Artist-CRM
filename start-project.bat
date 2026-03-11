@@ -1,6 +1,6 @@
 @echo off
 echo Starting Artist CRM Project...
-cd /d "d:\React Native Project\artist-crm"
+cd /d "d:\SAGLINKS\Artist-CRM"
 echo Current directory: %CD%
 echo.
 echo Installing dependencies...
