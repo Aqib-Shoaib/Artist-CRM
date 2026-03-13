@@ -4,6 +4,7 @@ import { authService } from '@/services/authService';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -34,6 +35,7 @@ interface LoginProps {
 }
 
 const Login = ({ onBack, onNavigateToDashboard, onNavigateToSignup }: LoginProps) => {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -51,8 +53,23 @@ const Login = ({ onBack, onNavigateToDashboard, onNavigateToSignup }: LoginProps
         await authService.saveToken(data.data.token);
         queryClient.setQueryData(['user'], data.data.user);
       }
-      
-      onNavigateToDashboard?.();
+
+      const user = data?.data?.user;
+
+      // Route based on email verification and company status
+      if (user && !user.is_email_verified) {
+        // Email not verified → go to OTP screen
+        router.replace({
+          pathname: '/(auth)/verify-email',
+          params: { email: user.email },
+        } as any);
+      } else if (user && !user.company) {
+        // Email verified but no company → go to company setup
+        router.replace('/(auth)/company-name' as any);
+      } else {
+        // All good → go to dashboard
+        onNavigateToDashboard?.();
+      }
     },
     onError: (error: any) => {
       console.error('Login error:', error);

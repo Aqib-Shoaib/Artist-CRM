@@ -1,5 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
+import { useClients } from '@/hooks/useClients';
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Modal,
   ScrollView,
@@ -9,30 +14,16 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useClients } from '@/hooks/useClients';
-import { ActivityIndicator } from 'react-native';
 
-import { THEME_COLORS } from '@/constants/Colors';
+
 import { useTheme } from '@/contexts/ThemeContext';
 import NavHeader from '../../common/Buttons/NavHeader';
 import ImageDesCard from '../../common/Cards/ImageDesCard';
 import SearchInput from '../../common/Inputs/SearchInput';
 
-// --- Interfaces ---
-interface Customer {
-  id: string;
-  title: string;
-  phone: string;
-  email: string;
-  description: string;
-  image: string;
-}
 
 const Customers: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const insets = useSafeAreaInsets();
@@ -61,7 +52,7 @@ const Customers: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
 
   // --- Search Logic ---
-  const filteredCustomers = (clients || []).filter((customer) => {
+  const filteredCustomers = (clients || []).filter((customer: any) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -69,6 +60,19 @@ const Customers: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
       customer.phone.includes(query)
     );
   });
+
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setTempImg(result.assets[0].uri);
+    }
+  };
 
   const handleOpenMenu = (event: any, member: any) => {
     const { pageY } = event.nativeEvent;
@@ -166,7 +170,7 @@ const handleSaveEdit = async () => {
                 />
                 <TouchableOpacity
                   style={styles.dots}
-                  onPress={(e) => handleOpenMenu(e, member)}
+                  onPress={(e: any) => handleOpenMenu(e, member)}
                 >
                   <MaterialCommunityIcons name="dots-vertical" size={24} color="#64748B" />
                 </TouchableOpacity>

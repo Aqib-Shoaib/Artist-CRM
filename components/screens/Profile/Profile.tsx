@@ -64,7 +64,6 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onNavigateToInvite }) => {
   const [inviteModalVisible, setInviteModalVisible] = useState<boolean>(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState<boolean>(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState<boolean>(false);
-  const [emailErrorVisible, setEmailErrorVisible] = useState<boolean>(false);
   const [editType, setEditType] = useState<'phone' | 'website' | 'team'>('phone');
 
   // --- Form States ---
@@ -217,7 +216,7 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onNavigateToInvite }) => {
 
   const handleSendInvitation = () => {
     if (!inviteEmail) {
-      setEmailErrorVisible(true);
+      // setEmailErrorVisible(true); // Removed as per instruction
       return;
     }
     setInviteModalVisible(false);

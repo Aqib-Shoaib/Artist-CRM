@@ -40,13 +40,17 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const { width } = Dimensions.get('window');
 type IonIconName = React.ComponentProps<typeof Ionicons>['name'];
 
+interface NewVisitProps {
+  onBack: () => void;
+}
+
 const NewVisit: React.FC<NewVisitProps> = ({ onBack }) => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, isDark } = useTheme();
 
   // --- Hooks & Services ---
-  const { clients, isLoading: isClientsLoading } = useClients();
+  const { clients } = useClients();
   const { createVisit, isCreating } = useVisits();
   const { data: catalogServices } = useCatalogServices();
   const { data: catalogTags } = useCatalogTags();
@@ -375,8 +379,8 @@ const NewVisit: React.FC<NewVisitProps> = ({ onBack }) => {
                     />
                     <View style={styles.quickSelectRow}>
                       {topServices
-                        .filter(s => !selectedServices.includes(s))
-                        .map(s => (
+                        .filter((s: any) => !selectedServices.includes(s))
+                        .map((s: any) => (
                           <TouchableOpacity
                             key={s}
                             style={[styles.quickChip, { backgroundColor: colors.background, borderColor: colors.border }]}
@@ -395,7 +399,7 @@ const NewVisit: React.FC<NewVisitProps> = ({ onBack }) => {
                           <Ionicons name="add-circle" size={22} color={colors.primary} />
                           <Text style={[styles.itemTitle, { color: colors.text }]}>Add {serviceSearch}</Text>
                         </TouchableOpacity>
-                        {filteredServices.map(s => (
+                        {filteredServices.map((s: string) => (
                           <TouchableOpacity
                             key={s}
                             style={[styles.suggestionItem, { borderBottomColor: colors.border }]}
@@ -447,8 +451,8 @@ const NewVisit: React.FC<NewVisitProps> = ({ onBack }) => {
                     />
                     <View style={styles.quickSelectRow}>
                       {topTags
-                        .filter(t => !selectedTags.includes(t))
-                        .map(t => (
+                        .filter((t: any) => !selectedTags.includes(t))
+                        .map((t: any) => (
                           <TouchableOpacity
                             key={t}
                             style={[styles.quickChip, { backgroundColor: colors.background, borderColor: colors.border }]}
@@ -467,7 +471,7 @@ const NewVisit: React.FC<NewVisitProps> = ({ onBack }) => {
                           <Ionicons name="add-circle" size={22} color={colors.primary} />
                           <Text style={[styles.itemTitle, { color: colors.text }]}>Add {tagSearch}</Text>
                         </TouchableOpacity>
-                        {filteredTags.map(t => (
+                        {filteredTags.map((t: string) => (
                           <TouchableOpacity
                             key={t}
                             style={[styles.suggestionItem, { borderBottomColor: colors.border }]}

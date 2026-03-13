@@ -5,27 +5,27 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
-  Dimensions,
   Image,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  Modal
+  View
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { THEME_COLORS } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useClients } from '@/hooks/useClients';
 import NavHeader from '../../common/Buttons/NavHeader';
 import Input from '../../common/Inputs/Input';
 
-const { width } = Dimensions.get('window');
+
 
 interface AddClientsProps {
   onBack?: () => void;
@@ -34,7 +34,6 @@ interface AddClientsProps {
 
 const AddClients: React.FC<AddClientsProps> = ({ onBack }) => {
   const { colors, isDark } = useTheme();
-  const insets = useSafeAreaInsets();
   
   // State Management
   const [name, setName] = useState<string>('');
@@ -43,6 +42,7 @@ const AddClients: React.FC<AddClientsProps> = ({ onBack }) => {
   const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
+  const { createClient, isCreating } = useClients();
 
   // Validation States (New)
   const [showValidationError, setShowValidationError] = useState(false);
@@ -110,8 +110,8 @@ useEffect(() => {
     }
   };
 
-const handleSave = () => {
-    if (loading) return;
+const handleSave = async () => {
+    if (loading || isCreating) return;
 
     // --- Validation Logic (New) ---
     if (!name.trim()) {
@@ -126,10 +126,34 @@ const handleSave = () => {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+
+    try {
+      const formData = new FormData();
+      formData.append('name', name.trim());
+      formData.append('phone', phone.trim());
+      
+      if (email.trim()) {
+        formData.append('email', email.trim());
+      }
+      
+      if (image) {
+        formData.append('profile_image', {
+          uri: image,
+          name: 'profile.jpg',
+          type: 'image/jpeg',
+        } as any);
+      }
+
+      await createClient(formData);
+      
       showTopSuccessLoader();
-    }, 1500);
+    } catch (error: any) {
+      console.error("Create Client Error:", error);
+      setErrorMessage(error.response?.data?.message || "Failed to add client.");
+      setShowValidationError(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Theme-based Dynamic Values
@@ -165,14 +189,14 @@ const placeholderColor = isDark ? colors.textSecondary : colors.textSecondary;
 
       <SafeAreaView style={styles.masterContainer} edges={['top', 'bottom']}>
         <NavHeader title="Add New Customer !" titleColor={isDark ? "#FFFFFF" : "#5152B3"}>
-          <TouchableOpacity onPress={handleSave} activeOpacity={0.8} disabled={loading}>
+          <TouchableOpacity onPress={handleSave} activeOpacity={0.8} disabled={loading || isCreating}>
             <LinearGradient
               colors={THEME_COLORS.buttonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.saveHeaderBtn}
             >
-              {loading ? (
+              {loading || isCreating ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text style={styles.saveBtnText}>Save</Text>

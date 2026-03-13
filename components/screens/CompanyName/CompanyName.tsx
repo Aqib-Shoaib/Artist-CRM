@@ -1,9 +1,13 @@
 import { THEME_COLORS } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
+import { authService } from '@/services/authService';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -33,15 +37,29 @@ const CompanyName: React.FC<CompanyNameProps> = ({
   onBack
 }) => {
   const { colors, isDark } = useTheme();
+  const queryClient = useQueryClient();
   const [companyName, setCompanyName] = useState<string>('');
   const [website, setWebsite] = useState<string>('');
 
-  // BackHandler is now handled at route level via useSmartBackHandler hook
+  const updateProfileMutation = useMutation({
+    mutationFn: (data: { company_name: string }) => authService.updateProfile(data),
+    onSuccess: (data: any) => {
+      // Update cached user data with new company info
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+      onNavigateToProfile?.();
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message || 'Failed to save company details. Please try again.';
+      Alert.alert('Error', message);
+    },
+  });
 
   const handleSubmit = () => {
-    if (onNavigateToProfile) {
-      onNavigateToProfile();
+    if (!companyName.trim()) {
+      Alert.alert('Error', 'Please enter your company name.');
+      return;
     }
+    updateProfileMutation.mutate({ company_name: companyName.trim() });
   };
 
   return (
@@ -125,6 +143,7 @@ const CompanyName: React.FC<CompanyNameProps> = ({
                 <TouchableOpacity
                   onPress={handleSubmit}
                   style={styles.buttonWrapper}
+                  disabled={updateProfileMutation.isPending}
                 >
                   <LinearGradient
                     colors={THEME_COLORS.buttonGradient}
@@ -132,7 +151,11 @@ const CompanyName: React.FC<CompanyNameProps> = ({
                     end={{ x: 1, y: 0 }}
                     style={styles.gradientButton}
                   >
-                    <Text style={styles.buttonText}>Save</Text>
+                    {updateProfileMutation.isPending ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.buttonText}>Save</Text>
+                    )}
                   </LinearGradient>
                 </TouchableOpacity>
 

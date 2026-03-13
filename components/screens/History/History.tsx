@@ -1,13 +1,12 @@
 
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useVisits } from '@/hooks/useVisits';
 import { useClients } from '@/hooks/useClients';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, GestureResponderEvent, Image, LayoutAnimation, Modal, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, UIManager, View } from 'react-native';
+import { ActivityIndicator, Dimensions, GestureResponderEvent, Image, LayoutAnimation, Modal, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, UIManager, View } from 'react-native';
 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,7 +23,6 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 type IonIconName = React.ComponentProps<typeof Ionicons>['name'];
 
 interface HistoryProps {
@@ -51,7 +49,6 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
   const [selectedId, setSelectedId] = useState<string | number | null>(null);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
-  const [headerMenuVisible, setHeaderMenuVisible] = useState(false);
   const [customerDropdownVisible, setCustomerDropdownVisible] = useState(false);
 
   // Sorting State
@@ -228,7 +225,14 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
     }
   };
 
-// function moved or removed
+  const handleSelectCustomer = (name: string) => {
+    setActiveFilters(prev => ({
+      ...prev,
+      selected_customer: name
+    }));
+    setCustomerDropdownVisible(false);
+    setSearchText('');
+  };
 
   const filteredData = (visits || []).filter((item) => {
     if (!item || !item.client) return false;
@@ -302,14 +306,14 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
     if (customerDropdownVisible && showSortMenu) {
       setShowSortMenu(false);
     }
-  }, [customerDropdownVisible]);
+  }, [customerDropdownVisible, showSortMenu]);
 
   // 2. Jab Sort Menu khule, toh Customer Dropdown band ho jaye
   useEffect(() => {
     if (showSortMenu && customerDropdownVisible) {
       setCustomerDropdownVisible(false);
     }
-  }, [showSortMenu]);
+  }, [showSortMenu, customerDropdownVisible]);
 
 
 
@@ -563,7 +567,7 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
                           color: sortOption === opt.value ? colors.primary : (isDark ? '#CBD5E1' : '#475569'),
                           fontWeight: sortOption === opt.value ? '600' : '400'
                         }}>
-                          {opt.label.replace(/"/g, '&quot;')}
+                          {opt.label}
                         </Text>
                         {sortOption === opt.value && <Ionicons name="checkmark" size={14} color={colors.primary} />}
                       </TouchableOpacity>
@@ -758,7 +762,7 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
                           <View style={[styles.dropdownMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
                             <TouchableOpacity style={styles.suggestionItem} onPress={() => handleAddItem(serviceSearch, 'service')}>
                               <Ionicons name="add-circle" size={22} color={colors.primary} />
-                              <Text style={[styles.itemTitle, { color: colors.text }]}>Add "{serviceSearch}"</Text>
+                              <Text style={[styles.itemTitle, { color: colors.text }]}>Add &quot;{serviceSearch}&quot;</Text>
                             </TouchableOpacity>
                           </View>
                         )}
@@ -808,7 +812,7 @@ const History: React.FC<HistoryProps> = ({ onNavigateToNewVisit }) => {
                           <View style={[styles.dropdownMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
                             <TouchableOpacity style={styles.suggestionItem} onPress={() => handleAddItem(tagSearch, 'tag')}>
                               <Ionicons name="add-circle" size={22} color={colors.primary} />
-                              <Text style={[styles.itemTitle, { color: colors.text }]}>Add "#{tagSearch}"</Text>
+                              <Text style={[styles.itemTitle, { color: colors.text }]}>Add &quot;#{tagSearch}&quot;</Text>
                             </TouchableOpacity>
                           </View>
                         )}

@@ -64,7 +64,7 @@ const Help: React.FC = () => {
         stiffness: 150,
       }).start();
     }
-  }, [showForm]);
+  }, [showForm, translateY]);
 
   // --- Handlers ---
   const closeForm = () => {

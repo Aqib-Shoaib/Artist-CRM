@@ -13,7 +13,6 @@ export default function NewVisitScreen() {
   return (
     <NewVisit
       onBack={() => router.back()}
-      onNavigateToWelcome={() => { }}
     />
   );
 }

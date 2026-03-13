@@ -3,7 +3,7 @@ import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-ico
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { THEME_COLORS } from '@/constants/Colors';
@@ -15,7 +15,6 @@ import InfoCard from '../../common/Cards/InfoCard';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDashboardStats } from '@/hooks/useDashboard';
 import { useRecentVisitsList } from '@/hooks/useVisits';
-import { ActivityIndicator } from 'react-native';
 
 interface DashboardProps {
   onBack?: () => void;

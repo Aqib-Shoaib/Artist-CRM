@@ -92,7 +92,7 @@ export const visitService = {
 
   getRecent: async () => {
     try {
-      const response = await api.get('/api/v1/visits/recent');
+      const response = await api.get('/api/v1/dashboard/recent-visits');
       return response.data;
     } catch (error) {
       console.error("Recent Visits Error:", error);

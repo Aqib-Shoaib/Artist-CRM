@@ -63,7 +63,7 @@ export const dashboardService = {
 
   getQuickStats: async () => {
     try {
-      const response = await api.get('/api/v1/dashboard/widgets');
+      const response = await api.get('/api/v1/dashboard/quick-stats');
       return response.data;
     } catch (error) {
       console.error("Dashboard Quick Stats Error:", error);

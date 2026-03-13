@@ -1,6 +1,7 @@
 import NavButton from '@/components/common/Buttons/NavButton';
 import { THEME_COLORS } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/hooks/useAuth';
 import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs, usePathname, useRouter } from 'expo-router';
@@ -13,7 +14,8 @@ function CustomTabBar() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { isDark, colors } = useTheme();
-
+  const { user } = useAuth()
+  console.log(user)
   // Get current active tab from pathname
   const getActiveRoute = () => {
     if (pathname?.includes('new-visit')) return 'new-visit';
@@ -94,6 +96,23 @@ function CustomTabBar() {
 }
 
 export default function TabLayout() {
+  const router = useRouter();
+  const { user, isLoading } = useAuth();
+
+  // Gate: redirect if email not verified or company not set
+  React.useEffect(() => {
+    if (isLoading || !user) return; // wait until user data is ready
+
+    if (!user.is_email_verified) {
+      router.replace({
+        pathname: '/(auth)/verify-email',
+        params: { email: user.email },
+      } as any);
+    } else if (!user.company) {
+      router.replace('/(auth)/company-name' as any);
+    }
+  }, [user, isLoading, router]);
+
   return (
     <>
       <Tabs

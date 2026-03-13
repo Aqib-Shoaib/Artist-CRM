@@ -953,7 +953,7 @@ const FilterInput: React.FC<FilterInputProps> = ({
         stiffness: 150,
       }).start();
     }
-  }, [isVisible]);
+  }, [isVisible, translateY]);
 
   const handleClose = () => {
     Animated.timing(translateY, {

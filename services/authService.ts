@@ -52,6 +52,36 @@ export const authService = {
     }
   },
 
+  resendEmailVerification: async () => {
+    try {
+      const response = await api.post('/api/v1/auth/email/resend');
+      return response.data;
+    } catch (error: any) {
+      console.log("Backend Resend Verification Error:", error.response?.data);
+      throw error;
+    }
+  },
+
+  verifyEmail: async (data: { token: string; email: string }) => {
+    try {
+      const response = await api.post('/api/v1/auth/email/verify', data);
+      return response.data;
+    } catch (error: any) {
+      console.log("Backend Verify Email Error:", error.response?.data);
+      throw error;
+    }
+  },
+
+  updateProfile: async (data: { company_name?: string; name?: string; phone?: string; bio?: string }) => {
+    try {
+      const response = await api.put('/api/v1/auth/profile', data);
+      return response.data;
+    } catch (error: any) {
+      console.log("Backend Update Profile Error:", error.response?.data);
+      throw error;
+    }
+  },
+
   logout: async () => {
     try {
       await api.post('/api/v1/auth/logout');
